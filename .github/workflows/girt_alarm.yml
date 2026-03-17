@@ -1,0 +1,40 @@
+name: GRIT Study Bot Scheduler
+
+on:
+  schedule:
+    # GitHub Actions는 UTC(세계 표준시)를 기준으로 합니다. (KST - 9시간)
+    - cron: '0 1 * * 1-5'   # 평일 오전 10시 (KST) -> UTC 01:00
+    - cron: '30 14 * * 1-5' # 평일 오후 11시 30분 (KST) -> UTC 14:30
+    - cron: '0 0 * * 1'     # 월요일 오전 9시 (KST) -> UTC 00:00 (주간 목표)
+  workflow_dispatch:        # 수동으로 실행해볼 수 있는 버튼을 만듭니다.
+
+jobs:
+  run-alarm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install slack_sdk google-genai python-dotenv
+
+      - name: Run Alarm Script
+        env:
+          # 여기서 GitHub Secrets에 등록한 값들을 파이썬 환경 변수로 꽂아줍니다.
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          # 현재 시간에 따라 다른 인자값을 전달합니다.
+          HOUR=$(date +%H)
+          if [ "$HOUR" == "01" ]; then python alarm.py morning;
+          elif [ "$HOUR" == "14" ]; then python alarm.py evening;
+          elif [ "$HOUR" == "00" ]; then python alarm.py weekly;
+          else python alarm.py morning; # 기본값
+          fi
