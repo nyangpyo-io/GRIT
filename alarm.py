@@ -13,8 +13,8 @@ load_dotenv(override=True)
 
 # 2. 환경 변수 및 설정
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
-SLACK_CHANNEL_ID = "C0ALKS81QP9"
-#SLACK_CHANNEL_ID = os.environ.get("SLACK_CHANNEL_ID")
+
+SLACK_CHANNEL_ID = os.environ.get("SLACK_CHANNEL_ID")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 # 3. 클라이언트 초기화
