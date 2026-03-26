@@ -5,6 +5,8 @@ from slack_sdk import WebClient
 from google import genai
 from dotenv import load_dotenv
 import re
+from datetime import datetime
+import pytz
 
 
 load_dotenv(override=True)
@@ -25,6 +27,12 @@ if not GEMINI_API_KEY:
 
 client_ai = genai.Client(api_key=GEMINI_API_KEY)
 client_slack = WebClient(token=SLACK_BOT_TOKEN)
+
+def get_current_time_kst():
+    """현재 한국 시간(KST)을 반환합니다."""
+    kst = pytz.timezone('Asia/Seoul')
+    now = datetime.now(kst)
+    return now.strftime("%Y년 %m월 %d일 (%a) %H:%M")
 
 def get_motivation(job_type):
     base_instruction = (
@@ -64,18 +72,19 @@ def get_motivation(job_type):
 def send_alarm(job_type):
     """지정된 타입에 맞춰 슬랙 메시지를 전송합니다."""
     quote = get_motivation(job_type)
+    current_time = get_current_time_kst()
     
     messages = {
-        "morning": f"✨ {quote}\n\n☀️ 오늘의 목표 (운동/공부)를 공유해주세요!\n💤 어제 취침 / ⏰ 오늘 기상 / 🏢 오늘 출근 시간도 함께 적어주세요.",
-        "evening": f"🌙 {quote}\n\n📸 오늘 하루는 어떠셨나요? 댓글로 사진과 오늘 하루 소감을 남겨주세요.",
-        "weekly": f"📅 {quote}\n\n이번 주 주간 단위 목표는 무엇인가요?",
-        "monthly": f"🗓️ {quote}\n\n새로운 달의 월간 단위 목표를 설정해봅시다!",
-        "tuesday": f"📢 오늘은 오프라인 스터디 모임!\n오후 7시에 모여서 함께 성장해요! 🚀"
+        "morning": f"🕐 {current_time}\n\n✨ {quote}\n\n☀️ 오늘의 목표 (운동/공부)를 공유해주세요!\n💤 어제 취침 / ⏰ 오늘 기상 / 🏢 오늘 출근 시간도 함께 적어주세요.",
+        "evening": f"🕐 {current_time}\n\n🌙 {quote}\n\n📸 오늘 하루는 어떠셨나요? 댓글로 사진과 오늘 하루 소감을 남겨주세요.",
+        "weekly": f"🕐 {current_time}\n\n📅 {quote}\n\n이번 주 주간 단위 목표는 무엇인가요?",
+        "monthly": f"🕐 {current_time}\n\n🗓️ {quote}\n\n새로운 달의 월간 단위 목표를 설정해봅시다!",
+        "tuesday": f"🕐 {current_time}\n\n📢 오늘은 오프라인 스터디 모임!\n오후 7시에 모여서 함께 성장해요! 🚀"
     }
     
     try:
         client_slack.chat_postMessage(channel=SLACK_CHANNEL_ID, text=messages.get(job_type, "알림이 도착했습니다."))
-        print(f"{job_type} 알림 전송 완료!")
+        print(f"{job_type} 알림 전송 완료! ({current_time})")
     except Exception as e:
         print(f"슬랙 메시지 전송 실패: {e}")
 
