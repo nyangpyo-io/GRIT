@@ -30,7 +30,7 @@ jobs:
           python-version: '3.9'
       - name: Install dependencies
         run: |
-          pip install slack_sdk google-genai python-dotenv
+          pip install slack_sdk google-genai python-dotenv pytz
       - name: Run Alarm Script
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -78,8 +78,8 @@ jobs:
                 EXECUTED=true
               fi
               
-            # 평일 오후 11시 30분 (저녁 알람) - 23:30~00:59 허용
-            elif [ "$CURRENT_HOUR_KST" == "23" ] || [ "$CURRENT_HOUR_KST" == "00" ]; then
+            # 평일 오후 11시 30분 (저녁 알람) - 23:00~23:59만 허용 (자정 넘어가면 취소)
+            elif [ "$CURRENT_HOUR_KST" == "23" ]; then
               echo "✅ 저녁 알람 발송"
               python alarm.py evening
               EXECUTED=true
