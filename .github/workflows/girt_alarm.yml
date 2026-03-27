@@ -28,14 +28,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 1. 파이썬 버전을 3.11로 올려서 버전 지원 종료 경고(FutureWarning) 해결
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.11'
 
+      # 2. 의존성 설치 목록 끝에 pytz를 추가하여 모듈 에러(ModuleNotFoundError) 해결
       - name: Install dependencies
         run: |
-          pip install slack_sdk google-genai python-dotenv
+          pip install slack_sdk google-genai python-dotenv pytz
 
       - name: Run Alarm Script
         env:
