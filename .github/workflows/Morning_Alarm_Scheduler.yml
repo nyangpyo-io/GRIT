@@ -1,0 +1,44 @@
+name: Morning Alarm Scheduler
+
+on:
+  schedule:
+    # 평일 오전 10시 KST (01:00 UTC)에 실행
+    - cron: '0 1 * * 1-5'
+  
+  workflow_dispatch:
+    inputs:
+      alarm_type:
+        description: '실행할 아침 알람 타입을 수동으로 선택하세요.'
+        required: true
+        default: 'morning'
+        type: choice
+        options:
+          - morning
+          - weekly
+          - tuesday
+
+jobs:
+  run-alarm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install slack_sdk google-genai python-dotenv pytz
+
+      - name: Run Morning Alarm Script
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          # 스케줄 실행 시에는 인자 없이 실행 -> 스크립트가 요일 자동 판단
+          # 수동(workflow_dispatch) 실행 시에는 선택한 인자를 전달
+          python alarm.py ${{ github.event.inputs.alarm_type }}
