@@ -1,0 +1,42 @@
+name: Evening Alarm Scheduler
+
+on:
+  schedule:
+    # [수정] 평일 22시 KST (13:00 UTC)로 변경
+    - cron: '0 13 * * 1-5' 
+  workflow_dispatch:
+    inputs:
+      alarm_type:
+        description: '저녁 알람을 수동으로 실행합니다.'
+        required: true
+        default: 'evening'
+        type: choice
+        options:
+          - evening
+
+jobs:
+  run-alarm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install slack_sdk google-genai python-dotenv pytz
+
+      - name: Run Evening Alarm Script
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # 수동 실행을 위해 event.inputs 사용
+          MANUAL: ${{ github.event.inputs.alarm_type }}
+        run: |
+          # 수동 실행 시에는 'evening'을, 스케줄 실행 시에도 'evening'을 인자로 전달
+          python alarm.py ${{ github.event.inputs.alarm_type || 'evening' }}
