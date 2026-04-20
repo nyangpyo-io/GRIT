@@ -176,16 +176,16 @@ def retry_worker():
             print(f"❌ 재시도 워커 에러: {e}")
 
 
-def send_system_alarm():
+def send_evening_alarm():
     try:
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         app.client.chat_postMessage(
             channel=CHANNEL_ID,
             text=f"📅 시각: {now_str}\n ✨☀️ 오늘의 목표 (운동/공부)를 공유해주세요! \n💤 어제 취침 / ⏰ 오늘 기상 / 🏢 오늘 출근 시간도 함께 적어주세요."
         )
-        print("✅ 알람 전송 성공!")
+        print("✅ 저녁 알람 전송 성공!")
     except Exception as e:
-        print(f"❌ 알람 전송 실패: {e}")
+        print(f"❌ 저녁 알람 전송 실패: {e}")
 
 
 @app.event("message")
