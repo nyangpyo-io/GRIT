@@ -27,12 +27,12 @@ app = App(token=SLACK_BOT_TOKEN)
 
 retry_queue = queue.Queue()
 
-LOADING_MESSAGES = [
+EVENING_LOADING_MESSAGES = [
     "<@{user_id}>님의 갓생 지표를 위해 지금 도파민과 협상 중입니다. 잠시만요! ",
-    " <@{user_id}>님의 하루를 분석 중입니다. 잠시만요! "
+    "<@{user_id}>님의 하루를 분석 중입니다. 잠시만요! "
 ]
 
-SYSTEM_COACH_PROMPT = """
+EVENING_COACH_PROMPT = """
 당신은 성장을 진심으로 돕는 [전략적 코치]입니다.
 가식적인 다정함이나 기계적인 차가움은 지양하고, 유저의 실행을 존중하면서도
 데이터 기반의 직언을 하는 '성숙한 선배'의 톤을 유지하세요.
@@ -68,7 +68,7 @@ def call_gemini(text, image_bytes=None, max_retries=3):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
 
     parts = [
-        {"text": SYSTEM_COACH_PROMPT},
+        {"text": EVENING_COACH_PROMPT},
         {"text": f"유저 소감: {text if text else '사진만 전송됨'}"}
     ]
 
@@ -113,7 +113,7 @@ def process_feedback(user_id, user_text, image_bytes, thread_ts, retry_count=0):
             thread_ts=thread_ts,
             text=f"<@{user_id}>님, 오늘 하루도 1% 성장했네요!:\n\n{clean_feedback}"
         )
-        print("✨ 피드백 전송 완료!")
+        print("✨ 저녁 피드백 전송 완료!")
 
     except Exception as e:
         err_str = str(e)
@@ -178,10 +178,11 @@ def retry_worker():
 
 def send_evening_alarm():
     try:
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+        now = datetime.now()
+        date_str = now.strftime("%Y년 %m월 %d일 (%a) %H:%M")
         app.client.chat_postMessage(
             channel=CHANNEL_ID,
-            text=f"📅 시각: {now_str}\n ✨☀️ 오늘의 목표 (운동/공부)를 공유해주세요! \n💤 어제 취침 / ⏰ 오늘 기상 / 🏢 오늘 출근 시간도 함께 적어주세요."
+            text=f"📅 {date_str}\n\n🌙 오늘 목표를 완수한 당신의 성취감은 참 값지고, 그 꾸준함이 쌓여 더 큰 가능성을 열어줄 거예요.\n오늘 하루는 어떠셨나요? 댓글로 사진과 오늘 하루 소감을 남겨주세요."
         )
         print("✅ 저녁 알람 전송 성공!")
     except Exception as e:
@@ -207,10 +208,10 @@ def handle_message_events(event, say):
     if not user_text and not files:
         return
 
-    raw_message = random.choice(LOADING_MESSAGES)
+    raw_message = random.choice(EVENING_LOADING_MESSAGES)
     personalized_message = raw_message.format(user_id=user_id)
 
-    print(f"📩 통합 분석 시작... (유저: {user_id})")
+    print(f"📩 저녁 인증 분석 시작... (유저: {user_id})")
     say(f"🧐 {personalized_message}", thread_ts=thread_ts)
 
     image_bytes = None
@@ -234,7 +235,7 @@ def handle_message_events(event, say):
 if __name__ == "__main__":
     threading.Thread(target=retry_worker, daemon=True).start()
 
-    send_evening_alarm()  # 이렇게 돼있어야 함
+    send_evening_alarm()
     print("⚡️ 저녁 코치 봇 가동!")
     handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
     handler.start()
