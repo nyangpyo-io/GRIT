@@ -234,7 +234,7 @@ def handle_message_events(event, say):
 if __name__ == "__main__":
     threading.Thread(target=retry_worker, daemon=True).start()
 
-    send_system_alarm()
-    print("⚡️ 최플로 시스템 코치 봇 최종 통합 버전 가동!")
+    send_evening_alarm()  # 이렇게 돼있어야 함
+    print("⚡️ 저녁 코치 봇 가동!")
     handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
     handler.start()
