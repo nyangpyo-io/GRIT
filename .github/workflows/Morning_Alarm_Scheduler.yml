@@ -16,7 +16,7 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: |
-          pip install slack_sdk google-genai python-dotenv pytz
+          pip install slack_sdk google-genai python-dotenv pytz slack_bolt
       - name: Check KST time
         if: github.event_name == 'schedule'
         run: |
