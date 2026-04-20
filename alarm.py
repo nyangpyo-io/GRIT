@@ -18,15 +18,18 @@ CHANNEL_ID = os.environ.get("CHANNEL_ID")
 
 if not SLACK_BOT_TOKEN:
     raise ValueError("SLACK_BOT_TOKEN이 설정되지 않았습니다.")
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY가 설정되지 않았습니다.")
+if not CHANNEL_ID:
+    raise ValueError("CHANNEL_ID가 설정되지 않았습니다.")
+
 app = App(token=SLACK_BOT_TOKEN)
 
-
-# 실패한 작업을 저장하는 큐
 retry_queue = queue.Queue()
 
 LOADING_MESSAGES = [
-  "<@{user_id}>님의 갓생 지표를 위해 지금 도파민과 협상 중입니다. 잠시만요! ",
-  " <@{user_id}>님의 하루를 분석 중입니다. 잠시만요! "
+    "<@{user_id}>님의 갓생 지표를 위해 지금 도파민과 협상 중입니다. 잠시만요! ",
+    " <@{user_id}>님의 하루를 분석 중입니다. 잠시만요! "
 ]
 
 SYSTEM_COACH_PROMPT = """
@@ -58,13 +61,11 @@ SYSTEM_COACH_PROMPT = """
 - 도입부에 따뜻한 이모지를 사용해주세요
 - 이모지는 도입부에만 따뜻하게 사용하고, 분석부에서는 신뢰감을 주는 기호(✅, 💡) 위주로 사용하세요.
 - 오늘의 명언 앞에는 이모지를 붙여주세요.
-
-
 """
 
 
 def call_gemini(text, image_bytes=None, max_retries=3):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
 
     parts = [
         {"text": SYSTEM_COACH_PROMPT},
@@ -104,8 +105,7 @@ def call_gemini(text, image_bytes=None, max_retries=3):
     raise Exception("OVERLOAD")
 
 
-def process_feedback(user_id, user_text, image_bytes, thread_ts):
-    """실제 Gemini 호출 및 슬랙 전송 처리"""
+def process_feedback(user_id, user_text, image_bytes, thread_ts, retry_count=0):
     try:
         clean_feedback = call_gemini(user_text, image_bytes).replace("**", "")
         app.client.chat_postMessage(
@@ -118,47 +118,57 @@ def process_feedback(user_id, user_text, image_bytes, thread_ts):
     except Exception as e:
         err_str = str(e)
         if err_str == "OVERLOAD":
-            print(f"⚠️ 과부하 에러 → 큐에 추가 (유저: {user_id})")
+            if retry_count >= 3:
+                print(f"❌ 최대 재시도 초과, 포기 (유저: {user_id})")
+                app.client.chat_postMessage(
+                    channel=CHANNEL_ID,
+                    thread_ts=thread_ts,
+                    text="⚠️ 반복 오류로 인해 피드백 전송에 실패했습니다. 나중에 다시 시도해주세요."
+                )
+                return
+
+            print(f"⚠️ 과부하 에러 → 큐에 추가 (유저: {user_id}, 시도: {retry_count + 1}/3)")
             app.client.chat_postMessage(
                 channel=CHANNEL_ID,
                 thread_ts=thread_ts,
                 text="⚠️ 시스템 과부하 에러 ㅠ_ㅠ 30초 후 자동으로 다시 시도할게요!"
             )
-            # 30초 후 재시도하도록 큐에 추가
             retry_queue.put({
                 "user_id": user_id,
                 "user_text": user_text,
                 "image_bytes": image_bytes,
                 "thread_ts": thread_ts,
-                "retry_after": time.time() + 30
+                "retry_after": time.time() + 30,
+                "retry_count": retry_count + 1
             })
         else:
             app.client.chat_postMessage(
                 channel=CHANNEL_ID,
                 thread_ts=thread_ts,
-                text="⚠️ 시스템 과부하 에러 ㅠ_ㅠ"
+                text="⚠️ 시스템 오류가 발생했습니다 ㅠ_ㅠ"
             )
             print(f"❌ 기타 에러: {err_str}")
 
 
 def retry_worker():
-    """백그라운드에서 큐를 계속 감시하며 재시도"""
     print("🔄 재시도 워커 시작!")
     while True:
         try:
             item = retry_queue.get(timeout=5)
-            # retry_after 시간까지 대기
+
             wait = item["retry_after"] - time.time()
             if wait > 0:
                 print(f"⏳ {wait:.0f}초 후 재시도 예정 (유저: {item['user_id']})")
                 time.sleep(wait)
 
-            print(f"🔄 자동 재시도 중... (유저: {item['user_id']})")
+            retry_count = item.get("retry_count", 0)
+            print(f"🔄 자동 재시도 중... ({retry_count}/3) (유저: {item['user_id']})")
             process_feedback(
                 item["user_id"],
                 item["user_text"],
                 item["image_bytes"],
-                item["thread_ts"]
+                item["thread_ts"],
+                retry_count
             )
         except queue.Empty:
             continue
@@ -168,7 +178,7 @@ def retry_worker():
 
 def send_system_alarm():
     try:
-        now_str =datetime.now().strftime("%Y-%m-%d %H:%M")
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         app.client.chat_postMessage(
             channel=CHANNEL_ID,
             text=f"📅 시각: {now_str}\n ✨☀️ 오늘의 목표 (운동/공부)를 공유해주세요! \n💤 어제 취침 / ⏰ 오늘 기상 / 🏢 오늘 출근 시간도 함께 적어주세요."
@@ -214,7 +224,6 @@ def handle_message_events(event, say):
         except Exception as e:
             print(f"⚠️ 사진 처리 오류: {e}")
 
-    # 별도 스레드에서 처리 (봇이 블로킹되지 않도록)
     threading.Thread(
         target=process_feedback,
         args=(user_id, user_text, image_bytes, thread_ts),
@@ -223,7 +232,6 @@ def handle_message_events(event, say):
 
 
 if __name__ == "__main__":
-    # 재시도 워커를 백그라운드 스레드로 실행
     threading.Thread(target=retry_worker, daemon=True).start()
 
     send_system_alarm()
