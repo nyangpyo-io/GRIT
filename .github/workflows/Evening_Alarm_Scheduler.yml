@@ -3,6 +3,8 @@ on:
   schedule:
     # 평일 21시 KST (12:00 UTC)
     - cron: '0 12 * * 1-5'
+  workflow_dispatch:
+
 jobs:
   run-alarm:
     runs-on: ubuntu-latest
@@ -17,6 +19,7 @@ jobs:
         run: |
           pip install slack_sdk google-genai python-dotenv pytz
       - name: Check KST time
+        if: github.event_name == 'schedule'
         run: |
           HOUR=$(TZ='Asia/Seoul' date +%H)
           echo "현재 KST 시간: $HOUR"
