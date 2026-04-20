@@ -16,6 +16,9 @@ SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 CHANNEL_ID = os.environ.get("CHANNEL_ID")
 
+if not SLACK_BOT_TOKEN:
+    raise ValueError("SLACK_BOT_TOKEN이 설정되지 않았습니다.")
+app = App(token=SLACK_BOT_TOKEN)
 
 
 # 실패한 작업을 저장하는 큐
@@ -204,7 +207,7 @@ def handle_message_events(event, say):
     if files:
         try:
             file_url = files[0]['url_private']
-            img_resp = requests.get(file_url, headers={'Authorization': f'Bearer {os.environ["SLACK_BOT_TOKEN"]}'})
+            img_resp = requests.get(file_url, headers={'Authorization': f'Bearer {SLACK_BOT_TOKEN}'})
             if img_resp.status_code == 200:
                 image_bytes = img_resp.content
                 print("🖼️ 이미지 데이터 병합 완료")
