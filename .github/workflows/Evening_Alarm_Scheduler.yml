@@ -1,4 +1,4 @@
-name: Evening Alarm Scheduler
+name: Run Evening Alarm Script
 on:
   schedule:
     # 평일 21시 KST (12:00 UTC)
@@ -30,7 +30,7 @@ jobs:
       - name: Run Evening Alarm Script
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python alarm.py evening
+         python evening.py
